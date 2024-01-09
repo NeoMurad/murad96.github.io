@@ -1,5 +1,8 @@
 
 ```{r1 , echo=FALSE}
+
+#packages 
+
 library(shiny)
 library(datasets)
 library(shinythemes)
@@ -17,9 +20,11 @@ library(utils)
 library(grDevices)
 library(NLP)
 
+#UI
+
 ui <- shinyUI(fluidPage(theme = shinytheme("readable"),
   titlePanel(fluidRow(        column(3, img(height = 70, width = 150, src = "https://upload.wikimedia.org/wikipedia/commons/5/5c/GlobeScan_Logo_w-_Tagline.png")),
-        column(8,offset = 1, "Advanced Coding Interface") )),
+        column(8,offset = 1, "Advanced Coding Interface") )), #logo
   tabsetPanel(
     tabPanel("Upload File",
              titlePanel(""),
