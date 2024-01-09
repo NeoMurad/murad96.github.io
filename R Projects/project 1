@@ -1,1 +1,233 @@
-p
+
+```{r1 , echo=FALSE}
+library(shiny)
+library(datasets)
+library(shinythemes)
+library(tm)
+library(dplyr)
+library(tidytext)
+library(topicmodels)
+library(bindrcpp)
+library(wordcloud)
+library(methods)
+library(RColorBrewer)
+library(base)
+library(graphics)
+library(utils)
+library(grDevices)
+library(NLP)
+
+ui <- shinyUI(fluidPage(theme = shinytheme("readable"),
+  titlePanel(fluidRow(        column(3, img(height = 70, width = 150, src = "https://upload.wikimedia.org/wikipedia/commons/5/5c/GlobeScan_Logo_w-_Tagline.png")),
+        column(8,offset = 1, "Advanced Coding Interface") )),
+  tabsetPanel(
+    tabPanel("Upload File",
+             titlePanel(""),
+             sidebarLayout(
+               sidebarPanel(
+                 fileInput('file1', 'Choose CSV File',
+                           accept=c('text/csv', 
+                                    'text/comma-separated-values,text/plain', 
+                                    '.csv')),
+
+                 # added interface for uploading data from
+                 # http://shiny.rstudio.com/gallery/file-upload.html
+                 tags$br(),
+                 checkboxInput('header', 'Header', TRUE),
+                 radioButtons('sep', 'Separator',
+                              c(Comma=',',
+                                Semicolon=';',
+                                Tab='\t'),
+                              ','),
+                 radioButtons('quote', 'Quote',
+                              c(None='',
+                                'Double Quote'='"',
+                                'Single Quote'="'"),
+                              '"')
+
+               ),
+               mainPanel(
+                 tableOutput('contents')
+               )
+             )
+    ),
+    tabPanel("Word Cloud",
+             pageWithSidebar(
+               headerPanel(''),
+               sidebarPanel(
+
+                 # "Empty inputs" - they will be updated after the data is uploaded
+                 selectInput('xcol', 'Variable', ""),sliderInput("freq",
+                  "Minimum Frequency:",
+                  min = 1,  max = 50, value = 15),
+      sliderInput("max",
+                  "Maximum Number of Words:",
+                  min = 1,  max = 300,  value = 100)
+
+               ),
+               mainPanel(
+                 plotOutput('MyPlot')
+               )
+             )
+    ),
+    
+    tabPanel("Frequency Bar Plot & Data",
+             pageWithSidebar(
+               headerPanel(''),
+               sidebarPanel(
+
+                 # "Empty inputs" - they will be updated after the data is uploaded
+      sliderInput("max",
+                  "Maximum Number of Words:",
+                  min = 1,  max = 300,  value = 100), downloadButton('download',"Download Output")
+
+               ),
+               mainPanel(
+                 plotOutput('MyPlot2')
+               )
+             )
+    )
+
+  )
+)
+)
+
+server <- shinyServer(function(input, output, session) {
+    # added "session" because updateSelectInput requires it
+
+
+  data <- reactive({ 
+    req(input$file1) ## ?req #  require that the input is available
+
+    #inFile <- input$file1 
+
+    # tested with a following dataset: write.csv(mtcars, "mtcars.csv")
+    # and                              write.csv(iris, "iris.csv")
+    df <- read.csv(input$file1$datapath, header = input$header, sep = input$sep,
+             quote = input$quote)
+
+
+    # Update inputs (you could create an observer with both updateSel...)
+    # You can also constraint your choices. If you wanted select only numeric
+    # variables you could set "choices = sapply(df, is.numeric)"
+    # It depends on what do you want to do later on.
+
+    updateSelectInput(session, inputId = 'xcol', label = 'Variable',
+                      choices = names(df), selected = names(df))
+
+    return(df)
+  })
+
+  output$contents <- renderTable({
+      data()
+  })
+
+  output$MyPlot <- renderPlot({
+    # for a histogram: remove the second variable (it has to be numeric as well):
+    # x    <- data()[, c(input$xcol, input$ycol)]
+    # bins <- nrow(data())
+    # hist(x, breaks = bins, col = 'darkgray', border = 'white')
+
+    # Correct way:
+    # x    <- data()[, input$xcol]
+    # bins <- nrow(data())
+    # hist(x, breaks = bins, col = 'darkgray', border = 'white')
+
+
+    # I Since you have two inputs I decided to make a scatterplot
+    x    <- data()[, input$xcol]
+    text_corpus <- VCorpus(VectorSource(x)) 
+text_corpus_clean <- tm_map(text_corpus,
+content_transformer(tolower))
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, stopwords())
+text_corpus_clean <- tm_map(text_corpus_clean, removeNumbers)
+text_corpus_clean <- tm_map(text_corpus_clean, removePunctuation)
+text_corpus_clean <- tm_map(text_corpus_clean, stripWhitespace)
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, c()) # enter any words you don't want to include in the analysis in the c bracket, with double quotes (e.g. "food")
+text_corpus_clean <- tm_map(text_corpus_clean, stemDocument)
+wordcloud(text_corpus_clean, min.freq = input$freq, max.words=input$max, random.order = FALSE,
+          colors=brewer.pal(8, "Dark2"))
+
+######
+
+
+
+
+
+  })
+  
+  
+  
+   output$MyPlot2 <- renderPlot({
+    # for a histogram: remove the second variable (it has to be numeric as well):
+    # x    <- data()[, c(input$xcol, input$ycol)]
+    # bins <- nrow(data())
+    # hist(x, breaks = bins, col = 'darkgray', border = 'white')
+
+    # Correct way:
+    # x    <- data()[, input$xcol]
+    # bins <- nrow(data())
+    # hist(x, breaks = bins, col = 'darkgray', border = 'white')
+
+
+    # I Since you have two inputs I decided to make a scatterplot
+    x    <- data()[, input$xcol]
+    text_corpus <- VCorpus(VectorSource(x)) 
+text_corpus_clean <- tm_map(text_corpus,
+content_transformer(tolower))
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, stopwords())
+text_corpus_clean <- tm_map(text_corpus_clean, removeNumbers)
+text_corpus_clean <- tm_map(text_corpus_clean, removePunctuation)
+text_corpus_clean <- tm_map(text_corpus_clean, stripWhitespace)
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, c()) # enter any words you don't want to include in the analysis in the c bracket, with double quotes (e.g. "food")
+text_corpus_clean <- tm_map(text_corpus_clean, stemDocument)
+dtmatrix <- TermDocumentMatrix(text_corpus_clean)
+m <- as.matrix(dtmatrix)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+barplot(d[1:input$max,]$freq, las = 2, names.arg = d[1:input$max,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+
+
+######
+
+data_output <- reactive({
+  
+    x    <- data()[, input$xcol]
+    text_corpus <- VCorpus(VectorSource(x)) 
+text_corpus_clean <- tm_map(text_corpus,
+content_transformer(tolower))
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, stopwords())
+text_corpus_clean <- tm_map(text_corpus_clean, removeNumbers)
+text_corpus_clean <- tm_map(text_corpus_clean, removePunctuation)
+text_corpus_clean <- tm_map(text_corpus_clean, stripWhitespace)
+text_corpus_clean <- tm_map(text_corpus_clean,
+removeWords, c()) # enter any words you don't want to include in the analysis in the c bracket, with double quotes (e.g. "food")
+text_corpus_clean <- tm_map(text_corpus_clean, stemDocument)
+dtmatrix <- TermDocumentMatrix(text_corpus_clean)
+m <- as.matrix(dtmatrix)
+v <- sort(rowSums(m),decreasing=TRUE)
+data.frame(word = names(v),freq=v)  
+  
+  
+})
+
+  output$download <- downloadHandler(
+    filename = function(){"OE_Frequency_Data.csv"}, 
+    content = function(fname){
+      write.csv(data_output(), fname)
+    }
+  )
+
+
+  })
+})
+
+shinyApp(ui, server)
+```
