@@ -1,0 +1,206 @@
+---
+title: "Binomial Bandit extended"
+author: "Murad Ahmed"
+date: "28/06/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+```
+
+## Setting up
+
+```{r Setting up}
+
+#Functions used in 2010 paper
+
+sim.post <- function(y, n, ndraws){
+  k <- length(y)
+  ans <- matrix(nrow=ndraws, ncol = k)
+  no <- n-y
+  for(i in 1:k)
+    ans[,i] <- rbeta(ndraws, y[i] +1, no[i]+1)
+  return(ans)
+}
+
+prob.winner <- function(post){
+  k <- ncol(y)
+  w <- table(factor(max.col(post), levels = 1:k))
+  return(w/sum(w))
+}
+compute.win.prob <- function(y, n, ndraws){
+  return(prob.winner(sim.post(y,n,ndraws)))
+}
+
+
+
+#Record the duration of each experiment
+time <- c()
+# Calculate the conversion lost for each experiment
+conversions <- c()
+
+#Setup
+  a1<- rbinom(1, 25, 0.04)
+  a2<- rbinom(1, 25, 0.045)
+  a3<- rbinom(1, 25, 0.035)
+  a4<- rbinom(1, 25, 0.03)
+ #a5<- rbinom(1, 0, 0.02)
+  #a6<- rbinom(1, 100, 0.05)
+ #a7<- rbinom(1, 0, 0.06)
+  #a8<- rbinom(1, 0, 0.07)
+
+```
+
+
+
+```{r MAB function}
+probs <- c()
+conversion_saved_day <- c()
+MAB <- function(y, n1, t.prob){
+  
+  t <- 1 
+  ndraws <- sum(n1)
+  #round(ndraws/length(t.prob))
+  #for (i in 1:length(t.prob)) {n1[i] <- round(ndraws/length(t.prob))}
+  #for (i in 1:length(t.prob)) {y[i] <- rbinom(1, n1[i], t.prob[i])}
+ while (TRUE) {
+
+
+conversion_saved_day[t] <- (sum(n1 *( max(t.prob) - t.prob)))
+#Posterior draws  
+
+theta <- sim.post(y,n1,ndraws)
+optimal <- which.max(t.prob)
+thetalist<-  apply(theta, 1, max) - theta[,optimal]
+dist <- quantile(thetalist,0.95)
+
+#Recording allocation probabilites
+probs <- rbind(probs,rbind(prob.winner(theta))) 
+trials <- round(ndraws*as.matrix(prob.winner(theta)), digits = 0)
+length(trials)
+for (i in 1:length(trials)) {n1[i] <- n1[i]+trials[i]}
+for (i in 1:length(trials)) {y[i] <- y[i] + rbinom(1, trials[i], t.prob[i])}
+
+
+#Stop the experiment after 2 weeks have passed AND if prob hits >= 0.95 (or <=0.05)
+if ((t >14)  & (dist < 0.01*max(t.prob))) {break}
+
+t = t+1
+
+ }
+  #recording conversions saved
+
+  conversion_saved <- (sum(n1 *( max(t.prob) - t.prob)))
+  prob_list <- as.data.frame(probs)
+  return(list(t,prob_list,conversion_saved,conversion_saved_day))
+}
+
+```
+
+
+
+# Simulation
+
+```{r Simulation}
+
+#Outer loop is a re-run of the experiment 500 times
+b <- 1
+while (b <501) {
+
+y <- cbind(a1,a2,a3,a4)         # success(reward)
+n1 <- cbind(25,25,25,25)           #no. of trials
+t.prob <- c(0.04,0.045,0.035,0.03)
+  
+  #y <- cbind(a1,a2,a3,a4,a5,a6)         # success(reward)
+  #n1 <- cbind(17,16,16,17,17,17)           #no. of trials
+  #t.prob <- c(0.04,0.045,0.035,0.03,0.02,0.05)
+
+#Experiment 
+
+z <- MAB(y,n1,t.prob)
+
+#recording time for each experiment
+  time[b] <- z[[1]]
+#recording conversions lost for each experiments
+  conversions[b]<- z[[3]]
+  b = b+1
+}
+```
+
+
+
+```{r comparison}
+#assuming that the first probability is the original
+powercomp <- function(t.prob,ndraws) {
+  
+a <- power.prop.test(p1 = t.prob[1], p2 = max(t.prob),  power = .95, sig.level = 0.05/(length(t.prob)-1))
+powertime <- round((round(a$n)*length(t.prob))/ndraws)
+powerconversions <- round(sum(((a$n)) * ( max(t.prob) - t.prob[t.prob < max(t.prob)])))
+
+return(list(powertime,powerconversions))
+}
+```
+
+
+
+
+```{r statistics}
+#calculating classical experiment
+a <- powercomp(t.prob,100)
+
+
+# Average no. of days saved
+mean(a[[1]]-time)
+
+#Average conversions saved
+mean(a[[2]]-conversions)
+
+
+```
+
+
+
+
+```{r plots}
+#Time saved plot
+df_time <- as.data.frame(a[[1]] - time)
+time_saved <- df_time[df_time >0]
+time_saved_plot <- hist(time_saved, col="blue",main="Days of Testing Saved",xlab="Number of Days")
+
+#Time saved plot
+time_saved_plot <- hist(time, col="blue",main="Days to End Experiment",xlab="Number of Days")
+
+
+#Conversion plot
+df_conversion <- as.data.frame(a[[2]] - conversions)
+conversion_saved <- df_conversion[df_conversion >800]
+conversion_saved_plot <- hist(conversion_saved, col="blue",main="Conversions Saved",xlab="Number of Conversions")
+
+#Daily Cost of Experiment plot
+df <- as.data.frame(cbind(z[[4]],1:z[[1]]))
+df <- df %>%  mutate(diff_row = V1 - lag(V1, default = 0))
+ggplot(df, aes(V2)) + 
+  geom_line(aes(y = diff_row))+
+  ggtitle("Daily Cost of Experiment (Conversions)") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("Days into experiment") + ylab("Lost conversions per day")+
+  geom_hline(yintercept=(a[[2]]/a[[1]]), linetype="dashed", color = "red", size=1)
+
+
+# Experiment plot
+z[[2]]$id <- 1:nrow(z[[2]])
+D=melt(z[[2]], id='id')
+D$Arm <- D$variable
+ggplot(D,aes(id,value, group=Arm, color=Arm))+geom_line()+
+  ggtitle("Optimal Arm Probabilities") +
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("Time Period") + ylab("Probability of being optimal")+
+  geom_hline(yintercept=0.95, linetype="dashed", color = "red", size=1)+
+  geom_hline(yintercept=0.05, linetype="dashed", color = "red", size=1)+
+  labs(fill='Arm') 
+```
+
