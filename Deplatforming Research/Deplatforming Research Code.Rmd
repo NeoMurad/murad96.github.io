@@ -66,12 +66,14 @@ guide <- read.csv("551.csv")
 
 ```{r}
 
-#Combining 
+#Q91, Q92, and Q93 are response variables for peoples attitudes towards deplatforming on social media platform (twitter), financial platform (paypal), and a web-hosting application platform (Google/Android). Responses are for people who were randomly assigned to the "least-liked group", if they were assigned to the "most-liked" group the responses would be blank, they'd otherwise be assigned to Q94,Q95,Q96.1, which are the exact same questions but for the people assigned to the most-liked experimental group
+
+#joining the respective variables for least (Q91,92,Q93) and most (Q94,Q95,Q96.1)
 
 a$least <- a$Q91 + a$Q92 + a$Q93
 a$most <- a$Q94 + a$Q95 + a$Q96.1
 
-#creating the aggregate index
+#creating the aggregate index and establishing one variable that joins the index for both the most and least liked groups instead of having two variables with NA values. We will create an experimental indicator variable instead
 
 a$merged <- (ifelse(is.na(a$least),0,a$least) + ifelse(is.na(a$most),0,a$most))/3
 a$merged
