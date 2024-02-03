@@ -22,13 +22,22 @@ guide <- read.csv("551.csv")
 
 ## variable label guide
 
+#Q87 generally asks respondents to rank 6 different groups from 1 (their least liked) to 6 (their most liked)
+
 #Q87_1 ---> ISIS sympathizers
 #Q87_2 ---> Proud Boys
 #Q87_3 ---> GLAAD
 #Q87_6 ---> Planned Parenthood
 #Q87_8 ---> Black Lives Matter
 #Q87_9 ---> Focus on the family
-#Q89   ---> People should be free to express their opinions, without fear of being harassed or punished by anyone
+
+#Q89   ---> 5 level (strongly agree to strongly disagree) likert question asking if "People should be free to express their opinions, without fear of being harassed or punished by anyone"
+
+#Q91, Q94 ask whether respondents agree or disagree
+#with a social media platform’s right to deplatform a most/least liked group leader while the two
+#other questions ask the same thing but regarding an online financial service’s right (Q92, Q95) and an
+#Application/Platform hosting company’s right (Q93, Q96.1), respectively
+
 #Q91 (least) twitter
 #Q92 (least) paypal
 #Q93 (least) google
@@ -58,18 +67,27 @@ guide <- read.csv("551.csv")
 ```{r}
 
 #Combining 
+
 a$least <- a$Q91 + a$Q92 + a$Q93
 a$most <- a$Q94 + a$Q95 + a$Q96.1
+
+#creating the aggregate index
 
 a$merged <- (ifelse(is.na(a$least),0,a$least) + ifelse(is.na(a$most),0,a$most))/3
 a$merged
 
+#creating the experimental indicator variable (1 if they're included in the "least liked" group and 0 otherwise)
+
 a$ind <- ifelse(is.na(a$Q91), 0, 1)
+
+#checking mean and statistical difference between the two experimental groups in terms of agreeing/disagreeing that people should not be harmed/punished because of their opinions (Q89)
 
 mean(a$Q89[a$ind ==1])
 mean(a$Q89[a$ind ==0])
 
 t.test(a$Q89[a$ind ==1],a$Q89[a$ind ==0])
+
+#recoding don't know responses
 
 az <- a
 
@@ -82,12 +100,12 @@ az$Q94 <- ifelse(is.na(az$Q94), 99, az$Q94)
 az$Q95 <- ifelse(is.na(az$Q95), 99, az$Q95)
 az$Q96.1 <- ifelse(is.na(az$Q96.1), 99, az$Q96.1)
 
-
+#filtering for the relevant variables
 
 d2 <- select(az,merged,ind,Q7,Q5,Q9,Q88,Q11,Q90_1,Q90_2,Q90_3,Q90_4,Q13,Q85,Q86,Q89,Q87_1,Q87_2,Q87_3,Q87_6,Q87_8,Q87_9,Q91,Q92, Q93,Q94,Q95,Q96.1,least,most)
 d2 <- na.omit(d2)
 
-
+#recoding don't know responses
 
 az$least <- ifelse(is.na(az$least), 99, az$least)
 az$most <- ifelse(is.na(az$most), 99, az$most)
@@ -99,7 +117,10 @@ az$Q95 <- ifelse(is.na(az$Q95), 99, az$Q95)
 az$Q96.1 <- ifelse(is.na(az$Q96.1), 99, az$Q96.1)
 
 
+
 d2[, 22:29][d2[, 22:29] == 99] <- NA
+
+#normalization of aggregate index to [0-1] range index
 
 d2$merged2 <-((d2$merged-1)/(5-1))
 d2$most2 <-((d2$most-1)/(5-1))
@@ -109,6 +130,8 @@ d2$least <- d2$least/3
 d2$most <- d2$most/3
 
 #t.test(,a$Q96.1)
+
+#checking mean and statistical difference between the two experimental groups
 
 mean(d2$Q89)
 mean(d2$most, na.rm = T)
@@ -144,13 +167,6 @@ t.test(a$Q89[a$ind ==1],a$Q89[a$ind ==0])
 ```
 
 
-#regression model
-
-
-```{r}
-summary(lm(a$least~as.factor(a$Q5)+a$Q7+a$Q9+a$Q88+as.factor(a$Q11)+as.factor(a$Q13)+as.factor(a$Q85)+a$Q86+0))
-summary(lm(a$most~as.factor(a$Q5)+a$Q7+a$Q9+a$Q88+as.factor(a$Q11)+as.factor(a$Q13)+as.factor(a$Q85)+a$Q86))
-```
 
 #plot by gender
 
@@ -549,68 +565,6 @@ ggplot(education_m,                ### The data frame to use.
 
 ```
 
-#conservative/liberal
-
-
-```{r}
-
-
-
-d <- select(a,merged,ind,Q7,Q5,Q9,Q88,Q11,Q90_1,Q90_2,Q90_3,Q90_4,Q13,Q85,Q86,Q89,Q87_1,Q87_2,Q87_3,Q87_6,Q87_8,Q87_9)
-d <- na.omit(d)
-
-
-
-d$ind <- as.factor(d$ind)
-d$Q88 <- as.factor(d$Q88)
-d$merged2 <-((d$merged-1)/(5-1))
-liberal <-  na.omit(select(d,merged2,ind,Q88))
-
-liberal <- liberal %>%
- group_by(ind, Q88) %>%
-  summarise(mean = mean(merged2),sd = sd(merged2))
-
-liberal_m <- liberal[-4]
-liberal_s <- liberal[-3]
-
-#liberal_m <- melt(liberal_m)
-#ggplot(liberal, aes(ind, mean, fill = Q88)) + 
- # geom_bar(stat="identity", position = "dodge")
-
-liberal_m$sd <- liberal_s$sd
-liberal_m$n <- as.integer(table(d$Q88,d$ind))
-
-
-liberal_m$label2 <- c("Most Liked", rep("Least Liked",(length(liberal_m$mean)-1)))
-
-liberal_m$Ideology <- as.factor(rep(c("Extremely liberal","Moderately liberal
-", "Slightly liberal","Neither liberal nor conservative","Slightly conservative","Moderately conservative","Extremely conservative"),2))
-
-liberal_m$Ideology<- factor(liberal_m$Ideology, levels =c("Extremely liberal","Moderately liberal
-", "Slightly liberal","Neither liberal nor conservative","Slightly conservative","Moderately conservative","Extremely conservative") )
-
-pd = position_dodge(.9)    ### How much to jitter the points on the plot
-
-ggplot(liberal_m,                ### The data frame to use.
-       aes(x     = ind,
-           y     = mean,
-           fill= Ideology)) + 
-  geom_bar(stat="identity", position = "dodge")  +
-
-    geom_errorbar(aes(ymin  = mean - 1.96*(sd/sqrt(n)),
-                      ymax  = mean + 1.96*(sd/sqrt(n))),
-                         size=.5,  
-                width=.2,
-                      position = pd) +
-    
-
-    ylab("Mean Deplatforming Index Value") + xlab("Experimental Groups")  + ggtitle("DI Value between Experimental Groups by Ideological Leaning") +
-  theme(plot.title = element_text(hjust = 0.5),panel.background = element_rect(fill = 'beige'), axis.text.x =element_text(colour = "black", face = "bold"))+
-  scale_x_discrete(labels =liberal_m$label2) +
-  scale_x_discrete(labels =party_m$label2) + scale_y_continuous(breaks=seq(0,1,0.1))
-
-
-```
 
 
 #Party
@@ -674,6 +628,71 @@ ggplot(party_m,                ### The data frame to use.
 
 
 ```
+
+
+#conservative/liberal
+
+
+```{r}
+
+
+
+d <- select(a,merged,ind,Q7,Q5,Q9,Q88,Q11,Q90_1,Q90_2,Q90_3,Q90_4,Q13,Q85,Q86,Q89,Q87_1,Q87_2,Q87_3,Q87_6,Q87_8,Q87_9)
+d <- na.omit(d)
+
+
+
+d$ind <- as.factor(d$ind)
+d$Q88 <- as.factor(d$Q88)
+d$merged2 <-((d$merged-1)/(5-1))
+liberal <-  na.omit(select(d,merged2,ind,Q88))
+
+liberal <- liberal %>%
+ group_by(ind, Q88) %>%
+  summarise(mean = mean(merged2),sd = sd(merged2))
+
+liberal_m <- liberal[-4]
+liberal_s <- liberal[-3]
+
+#liberal_m <- melt(liberal_m)
+#ggplot(liberal, aes(ind, mean, fill = Q88)) + 
+ # geom_bar(stat="identity", position = "dodge")
+
+liberal_m$sd <- liberal_s$sd
+liberal_m$n <- as.integer(table(d$Q88,d$ind))
+
+
+liberal_m$label2 <- c("Most Liked", rep("Least Liked",(length(liberal_m$mean)-1)))
+
+liberal_m$Ideology <- as.factor(rep(c("Extremely liberal","Moderately liberal
+", "Slightly liberal","Neither liberal nor conservative","Slightly conservative","Moderately conservative","Extremely conservative"),2))
+
+liberal_m$Ideology<- factor(liberal_m$Ideology, levels =c("Extremely liberal","Moderately liberal
+", "Slightly liberal","Neither liberal nor conservative","Slightly conservative","Moderately conservative","Extremely conservative") )
+
+pd = position_dodge(.9)    ### How much to jitter the points on the plot
+
+ggplot(liberal_m,                ### The data frame to use.
+       aes(x     = ind,
+           y     = mean,
+           fill= Ideology)) + 
+  geom_bar(stat="identity", position = "dodge")  +
+
+    geom_errorbar(aes(ymin  = mean - 1.96*(sd/sqrt(n)),
+                      ymax  = mean + 1.96*(sd/sqrt(n))),
+                         size=.5,  
+                width=.2,
+                      position = pd) +
+    
+
+    ylab("Mean Deplatforming Index Value") + xlab("Experimental Groups")  + ggtitle("DI Value between Experimental Groups by Ideological Leaning") +
+  theme(plot.title = element_text(hjust = 0.5),panel.background = element_rect(fill = 'beige'), axis.text.x =element_text(colour = "black", face = "bold"))+
+  scale_x_discrete(labels =liberal_m$label2) +
+  scale_x_discrete(labels =party_m$label2) + scale_y_continuous(breaks=seq(0,1,0.1))
+
+
+```
+
 
 #Activity
 
@@ -909,4 +928,42 @@ ggplot(degree_m,                ### The data frame to use.
   scale_x_discrete(labels =degree_m$label2) + scale_y_continuous(breaks=seq(0,1,0.1))
 ```
 
+#regression
 
+```{r}
+#regression
+d2$Q7 <- ifelse(d2$Q7 == 2,0,1) #recoding gender to be 0,1 instead of 1,2 so that all of the nominal and #binary variables are recoded similarly
+
+d2$merged2 <- ((d2$merged/3)-1)/(5-1)
+
+#recoding several variables for consistency before regression
+
+d2$Q13 <- car::recode(d2$Q13,"c('8') = '7'") 
+d2$Q85 <- car::recode(d2$Q85,"c('8') = '7'") 
+
+d2$Q90_1 <- car::recode(d2$Q90_1,"c('2') = '0'") 
+d2$Q90_2 <- car::recode(d2$Q90_2,"c('2') = '0'") 
+d2$Q90_3 <- car::recode(d2$Q90_3,"c('2') = '0'") 
+d2$Q90_4 <- car::recode(d2$Q90_4,"c('2') = '0'") 
+d2$Q90<- d2$Q90_1 + d2$Q90_4 + d2$Q90_3 + d2$Q90_2
+
+
+
+d2$Q9 <- d$Q9
+
+#d2$Q85<- car::recode(d2$Q85,"c('0') = '7';c('6') = '5';c('2') = '2';c('4') = '3';c('5') = '4';c('6') = '5';c('7') = '6';c('8') = '7'") 
+
+d2$Q11<- car::recode(d2$Q11,"c('1') = '0';c('2') = '1';c('3') = '2';c('4') = '3'")
+
+#d2$Q855 <- ifelse(d2$Q85 == 0,7,d2$Q85)
+#d2$Q855 <- ifelse(d2$Q855 == 1,0,d2$Q855)
+#d2$Q855 <- ifelse(d2$Q855 == 7,1,d2$Q855)
+
+# linear model
+
+summary(lm(merged2~(Q89+as.factor(Q7)+as.factor(Q5)+as.factor(Q9)+as.factor(Q88)+as.factor(Q11)+as.factor(Q13)+as.factor(Q85)+as.factor(Q86)+as.factor(ind)+ Q90)*as.factor(ind),data = d2))
+
+#summary(lm(merged2~(ind+Q87_1+Q87_2+Q87_3+Q87_6+Q87_8+as.factor(Q7)+as.factor(Q5)+as.factor(Q9))*ind, data = d))
+
+
+```
