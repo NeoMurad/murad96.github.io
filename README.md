@@ -2,7 +2,7 @@
 
 Welcome! Here I showcase my personal and academic projects!
 
-Some projects are only code-based while others include explanations and visualizations. Here's what you came here for:
+Some projects are only code-based while others include explanations and visualizations. The projects are as follows:
 
 1) Deplatforming project
 Developed and deployed a survey experiment on Amazon MTurk, using statistical t-tests to demonstrate a preference for deplatforming disliked over tolerated groups. Applied linear regression to identify factors affecting attitudes toward deplatforming. Tools used: Qualtrics, Amazon MTurk, R.
