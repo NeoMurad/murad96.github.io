@@ -9,7 +9,7 @@ Some projects are only code-based while others include explanations and visualiz
 Tools used: Power BI
 Analyzed and visualized different Coca-Cola sales metrics by US State and broke them down across sub-brands (Coke Diet, Dasani, et.c) by sales, price, margin, and profit.
 
-[Link for Power BI visualization]([https://app.powerbi.com/view?r=eyJrIjoiYWI4N2EwNTctODExZS00ZmY0LTllZDktYjFjOWY5Nzk2YTlhIiwidCI6ImQ1OTc1ZWE0LTViZjktNGRiOC05YTdjLTNkMTA1YTYxOTBhYyIsImMiOjR9])
+[Link for Power BI visualization](https://app.powerbi.com/view?r=eyJrIjoiYWI4N2EwNTctODExZS00ZmY0LTllZDktYjFjOWY5Nzk2YTlhIiwidCI6ImQ1OTc1ZWE0LTViZjktNGRiOC05YTdjLTNkMTA1YTYxOTBhYyIsImMiOjR9)
 
 2) Baseball Statistics Visualization
 Tools used: Tableau
